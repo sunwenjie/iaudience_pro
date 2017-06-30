@@ -1,0 +1,95 @@
+<beans:beans xmlns="http://www.springframework.org/schema/security"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:beans="http://www.springframework.org/schema/beans"
+	xsi:schemaLocation="http://www.springframework.org/schema/security 
+            http://www.springframework.org/schema/security/spring-security-4.2.xsd
+            http://www.springframework.org/schema/beans 
+               http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+            ">
+
+	<!-- Spring-Security 的配置 -->
+	<http auto-config="false" use-expressions="true" disable-url-rewriting="false" entry-point-ref="casProcessingFilterEntryPoint">
+		<!--  -->
+		<headers disabled="true"/>
+		<csrf disabled="true"/>
+		
+		<intercept-url pattern="/index.jsp" access="permitAll" />
+		<intercept-url pattern="/app/detail*" access="permitAll" />
+		<intercept-url pattern="/app/guest_list" access="isAnonymous()" />
+		<intercept-url pattern="/**" access="hasRole('ROLE_USER')"/>
+		
+		<custom-filter ref="requestSingleLogoutFilter" before="LOGOUT_FILTER"/>
+		<custom-filter ref="singleLogoutFilter" before="CAS_FILTER"/>
+		<custom-filter ref="casAuthenticationFilter" position="CAS_FILTER"/>
+		<logout logout-url="/logout" logout-success-url="/logout/cas"/>
+	</http>
+	
+	<authentication-manager alias="authenticationManager">
+		<authentication-provider ref="casAuthenticationProvider"/>
+	</authentication-manager>
+	
+	<!-- This filter handles a Single Logout Request from the CAS Server -->
+	<beans:bean id="singleLogoutFilter" class="org.jasig.cas.client.session.SingleSignOutFilter"/>
+
+	<!-- This filter redirects to the CAS Server to signal Single Logout should be performed -->
+	<beans:bean id="requestSingleLogoutFilter" class="org.springframework.security.web.authentication.logout.LogoutFilter">
+		<beans:constructor-arg value="${cas.auth.server}/logout"/>
+		<beans:constructor-arg>
+			<beans:bean class="org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler"/>
+		</beans:constructor-arg>
+		<beans:property name="filterProcessesUrl" value="/logout/cas"/>
+	</beans:bean>
+
+	<beans:bean id="casAuthenticationFilter" class="org.springframework.security.cas.web.CasAuthenticationFilter">
+		<beans:property name="authenticationManager" ref="authenticationManager"/>
+		<!-- 
+		<beans:property name="authenticationSuccessHandler">
+			<beans:bean class="org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler">
+				<beans:property name="alwaysUseDefaultTargetUrl" value="false" />
+				<beans:property name="defaultTargetUrl" value="${cas.auth.client}/app/list" />
+			</beans:bean>
+		</beans:property>
+		 -->
+		<!-- 
+		<beans:property name="filterProcessesUrl" value="/login/cas"/>
+		 -->
+	</beans:bean>
+
+	<beans:bean id="casProcessingFilterEntryPoint" class="org.springframework.security.cas.web.CasAuthenticationEntryPoint">
+                <!-- 单点登录服务器登录URL -->
+		<beans:property name="loginUrl" value="${cas.auth.server}/login?source=symphony"/>
+		<beans:property name="serviceProperties" ref="serviceProperties"/>
+	</beans:bean>
+
+	<beans:bean id="casAuthenticationProvider"
+	      class="org.springframework.security.cas.authentication.CasAuthenticationProvider">
+		<beans:property name="authenticationUserDetailsService">
+			<beans:bean class="org.springframework.security.core.userdetails.UserDetailsByNameServiceWrapper">
+				<beans:constructor-arg ref="userDetailsService" />
+			</beans:bean>
+		</beans:property>
+		<beans:property name="serviceProperties" ref="serviceProperties"/>
+		<beans:property name="ticketValidator">
+			<beans:bean class="org.jasig.cas.client.validation.Cas20ServiceTicketValidator">
+				<beans:constructor-arg index="0" value="${cas.auth.server}"/>
+			</beans:bean>
+		</beans:property>
+		<beans:property name="key" value="key4CasAuthenticationProvider"/>
+	</beans:bean>
+	
+	<beans:bean id="serviceProperties" class="org.springframework.security.cas.ServiceProperties">
+         <!--[login/cas]是Spring Security 4.0后修改的地址、跟3.X版本完全不同、请勿修改-->
+		<beans:property name="service" value="${cas.auth.client}/login/cas"/>
+		<beans:property name="sendRenew" value="false"/>
+	</beans:bean>
+	
+	<beans:bean id="userDetailsService"
+		class="com.iclick.infrastructure.common.user.service.UserDetailsServcieImpl">
+		<beans:property name="simpleJdbcUserDao" ref="simpleJdbcUserDao" />
+	</beans:bean>
+	
+	<beans:bean id="simpleJdbcUserDao" class="com.iclick.infrastructure.common.user.dao.SimpleJdbcUserDao">
+		<beans:property name="dataSource" ref="ucDataSource"/>
+		<beans:property name="systemId" value="1" />
+		<beans:property name="moduleId" value="6" />
+	</beans:bean>
+</beans:beans>

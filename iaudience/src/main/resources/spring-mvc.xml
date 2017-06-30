@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+	xsi:schemaLocation="http://www.springframework.org/schema/mvc
+			http://www.springframework.org/schema/mvc/spring-mvc-4.3.xsd  
+        	http://www.springframework.org/schema/beans
+        	http://www.springframework.org/schema/beans/spring-beans-4.3.xsd  
+        	http://www.springframework.org/schema/context
+        	http://www.springframework.org/schema/context/spring-context-4.3.xsd">
+
+	<mvc:resources mapping="/static/**" location="/static/" />
+
+	<context:component-scan base-package="com.iclick.symphony.iaudience"
+		use-default-filters="false">
+		<context:include-filter type="annotation"
+			expression="org.springframework.stereotype.Controller" />
+		<context:include-filter type="annotation"
+			expression="org.springframework.web.bind.annotation.RestController" />
+	</context:component-scan>
+
+
+
+	<context:property-placeholder
+		properties-ref="configProperties" />
+
+	<!-- content-negotiation-manager 多视图内容协商命名空间方式配置 -->
+	<mvc:annotation-driven
+		content-negotiation-manager="contentNegotiationManager" />
+	<mvc:default-servlet-handler/>
+	<bean id="messageSource"
+		class="org.springframework.context.support.ResourceBundleMessageSource">
+
+		<!-- 国际化信息所在的文件名 -->
+		<property name="basename" value="message" />
+		<!-- 如果在国际化资源文件中找不到对应代码的信息，就用这个代码作为名称 -->
+		<property name="useCodeAsDefaultMessage" value="true" />
+	</bean>
+	<bean id="localeResolver"
+		class="org.springframework.web.servlet.i18n.SessionLocaleResolver" />
+	<mvc:interceptors>
+		<bean class="org.springframework.web.servlet.i18n.LocaleChangeInterceptor"></bean>
+	</mvc:interceptors>
+
+	<mvc:interceptors>
+		<!-- 多个拦截器，顺序执行 -->
+		<mvc:interceptor>
+			<!-- /** 表示所有的url，包括子url路径 -->
+			 <mvc:mapping path="/**"/>
+			 <mvc:exclude-mapping path="/**/fonts/*"/>
+			 <mvc:exclude-mapping path="/**/*.css"/>
+			 <mvc:exclude-mapping path="/**/*.js"/>
+			 <mvc:exclude-mapping path="/**/*.png"/>
+			 <mvc:exclude-mapping path="/**/*.gif"/>
+			 <mvc:exclude-mapping path="/**/*.jpg"/>
+			 <mvc:exclude-mapping path="/**/*.jpeg"/>
+			 <mvc:exclude-mapping path="/**/*login*"/>
+			 <mvc:exclude-mapping path="/**/*Login*"/>
+			<bean class="com.iclick.symphony.iaudience.filter.LoginHandlerIntercepter"></bean>
+		</mvc:interceptor>
+	</mvc:interceptors>
+	<!-- 定义表态资源访问 -->
+	<mvc:resources mapping="/images/**" location="/WEB-INF/images/" />
+	<mvc:resources mapping="/css/**" location="/WEB-INF/css/" />
+	<mvc:resources mapping="/js/**" location="/WEB-INF/js/" />
+	<mvc:resources mapping="/docs/**" location="/WEB-INF/docs/" />
+	<mvc:resources mapping="/fonts/**" location="/WEB-INF/fonts/" />
+	<mvc:resources mapping="/bootstrap/**" location="/WEB-INF/bootstrap/" />
+	<mvc:resources mapping="*.html" location="/WEB-INF/view/" />
+
+	<!-- 一般视图 class方式配置 -->
+	<!-- <bean id="requestMappingHandlerAdapter" class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter"> 
+		<property name="messageConverters"> <list> <ref bean="mappingJacksonHttpMessageConverter" 
+		/> </list> </property> </bean> <bean id="mappingJacksonHttpMessageConverter" 
+		class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter"> 
+		<property name="supportedMediaTypes"> <list> <value>text/plain;charset=UTF-8</value> 
+		<value>application/json;charset=UTF-8</value> </list> </property> </bean> 
+		<bean id="requestMappingHandlerMapping" class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping"> 
+		</bean> -->
+
+	<!-- 多视图内容协商 class方式配置，咱不能正常工作 -->
+	<!-- <bean id="requestMappingHandlerAdapter" class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerAdapter"> 
+		<property name="contentNegotiationManager" ref="contentNegotiationManager" 
+		/> </bean> <bean id="requestMappingHandlerMapping" class="org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping"> 
+		<property name="contentNegotiationManager" ref="contentNegotiationManager" 
+		/> </bean> -->
+
+
+
+	<!-- 定义无需Controller的url<->view直接映射 -->
+	<mvc:view-controller path="/" view-name="redirect:/login" />
+
+	<bean id="contentNegotiationManager"
+		class="org.springframework.web.accept.ContentNegotiationManagerFactoryBean">
+		<!-- 根据URL中的文件扩展名确定MIME（如*.xml,*.json） -->
+		<property name="favorPathExtension" value="true" />
+		<!-- 则根据请求参数的值确定MIME类型，默认的请求参数是format，可以通过parameterName属性指定一个自定义的参数 -->
+		<property name="favorParameter" value="true" />
+		<!-- 则采用Accept请求报文头的值确定MIME类型。由于不同的浏览器产生的Accept头都是不一样的，所以一般不建议采用Accept确定MIME类型 -->
+		<property name="ignoreAcceptHeader" value="false" />
+		<property name="defaultContentType" value="text/html" />
+		<property name="mediaTypes">
+			<map>
+				<entry key="json" value="application/json" />
+				<entry key="xml" value="application/xml" />
+			</map>
+		</property>
+	</bean>
+
+	<bean
+		class="org.springframework.web.servlet.view.ContentNegotiatingViewResolver">
+		<property name="order" value="1" />
+		<property name="contentNegotiationManager" ref="contentNegotiationManager" />
+
+		<property name="viewResolvers">
+			<list>
+				<bean class="org.springframework.web.servlet.view.BeanNameViewResolver" />
+				<bean
+					class="org.springframework.web.servlet.view.InternalResourceViewResolver">
+					<property name="viewClass"
+						value="org.springframework.web.servlet.view.JstlView" />
+					<property name="prefix" value="/WEB-INF/views/" />
+					<property name="suffix" value=".jsp" />
+				</bean>
+			</list>
+		</property>
+
+		<property name="defaultViews">
+			<list>
+				<!-- for application/json -->
+				<bean
+					class="org.springframework.web.servlet.view.json.MappingJackson2JsonView">
+					<property name="extractValueFromSingleKeyModel" value="true" />
+					<property name="objectMapper">
+						<bean class="com.fasterxml.jackson.databind.ObjectMapper">
+							<property name="serializationInclusion">
+								<value type="com.fasterxml.jackson.annotation.JsonInclude.Include">NON_NULL</value>
+							</property>
+						</bean>
+					</property>
+				</bean>
+				<!-- for application/xml -->
+				<bean class="org.springframework.web.servlet.view.xml.MarshallingView">
+					<property name="marshaller">
+						<bean class="org.springframework.oxm.xstream.XStreamMarshaller">
+							<property name="autodetectAnnotations" value="true" />
+							<property name="streamDriver">
+								<bean class="com.thoughtworks.xstream.io.xml.StaxDriver" />
+							</property>
+						</bean>
+					</property>
+				</bean>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 支持上传文件 -->
+	<bean id="multipartResolver"
+		class="org.springframework.web.multipart.commons.CommonsMultipartResolver" />
+</beans>  

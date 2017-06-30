@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<decorators defaultdir="/WEB-INF/views/common">
+    <!-- 此处用来定义不需要过滤的页面 -->
+    <excludes>
+        <pattern>/login*</pattern>  
+        <pattern>/register*</pattern>
+        <pattern>/common*</pattern>
+        <pattern>/login*</pattern>
+        <pattern>/ajax*</pattern>
+        <pattern>/test</pattern>
+        <pattern>/index*</pattern>
+        <pattern>/error*</pattern>
+        <pattern>/forgotPassword*</pattern>
+        <pattern>/sendEmailForgotPassword*</pattern>
+        <pattern>/resetPassword*</pattern>
+        <pattern>/doResetPassword*</pattern>
+    </excludes>
+
+    <!-- 用来定义装饰器要过滤的页面 -->
+    <decorator name="default" page="decorator.jsp">
+        <pattern>/*</pattern>
+    </decorator>
+</decorators>

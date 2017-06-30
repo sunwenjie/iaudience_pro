@@ -1,0 +1,24 @@
+package com.iclick.symphony.iaudience.dao;
+
+import javax.annotation.Resource;
+
+import org.junit.Assert;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
+
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration({
+	"classpath:applicationContext.xml"
+})
+public class UserRepositoryTest {
+	@Resource
+    private UserRepository userRepository;
+	
+	@Test
+	public void userListTest(){
+		Assert.assertNotNull(userRepository.findAll());
+	}
+	
+}

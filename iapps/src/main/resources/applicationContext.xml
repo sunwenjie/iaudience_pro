@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:tx="http://www.springframework.org/schema/tx" 
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans
+               http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+               http://www.springframework.org/schema/context
+               http://www.springframework.org/schema/context/spring-context-4.3.xsd
+               http://www.springframework.org/schema/tx
+               http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+               http://www.springframework.org/schema/aop
+               http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+               http://www.springframework.org/schema/util  
+               http://www.springframework.org/schema/util/spring-util-4.3.xsd
+               http://www.springframework.org/schema/data/jpa
+               http://www.springframework.org/schema/data/jpa/spring-jpa-1.8.xsd
+               ">
+    <context:component-scan base-package="com.iclick.symphony.iapps" />
+	<context:annotation-config />
+	
+	<context:property-placeholder properties-ref="configProperties"/>
+
+    <bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator" >
+        <property name="proxyTargetClass" value="true" />
+    </bean>
+
+    <bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource">
+ 		<property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+		<property name="jdbcUrl" value="${main.jdbc.url}"/>
+		<property name="username" value="${main.jdbc.user}"/>
+		<property name="password" value="${main.jdbc.password}"/>
+		<!-- Default settings -->
+		<!-- 控制自动提交行为 default：true -->
+		<property name="autoCommit" value="true"/>
+		<!--连接池获取的连接是否只读 default:false-->
+		<property name="readOnly" value="false"/>
+		<!--最大连接超时时间 default：30秒-->
+		<property name="connectionTimeout" value="30000"/>
+		<!--最大空闲超时时间 default：10分钟   -->
+		<property name="idleTimeout" value="600000"/>
+		<!--连接池中一个连接的最大生命周期 default：30分钟-->
+		<property name="maxLifetime" value="1800000 "/>
+		<!--..还有一些其他配置属性 有兴趣可以看看 O(∩_∩)O哈哈~ -->
+		<property name="connectionTestQuery" value="${main.jdbc.validate.sql}"/>
+	</bean>
+	
+	<bean id="ucDataSource" class="com.zaxxer.hikari.HikariDataSource">
+ 		<property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+		<property name="jdbcUrl" value="${uc.jdbc.url}"/>
+		<property name="username" value="${uc.jdbc.user}"/>
+		<property name="password" value="${uc.jdbc.password}"/>
+		<!-- Default settings -->
+		<!-- 控制自动提交行为 default：true -->
+		<property name="autoCommit" value="true"/>
+		<!--连接池获取的连接是否只读 default:false-->
+		<property name="readOnly" value="false"/>
+		<!--最大连接超时时间 default：30秒-->
+		<property name="connectionTimeout" value="30000"/>
+		<!--最大空闲超时时间 default：10分钟   -->
+		<property name="idleTimeout" value="600000"/>
+		<!--连接池中一个连接的最大生命周期 default：30分钟-->
+		<property name="maxLifetime" value="1800000 "/>
+		<!--..还有一些其他配置属性 有兴趣可以看看 O(∩_∩)O哈哈~ -->
+		<property name="connectionTestQuery" value="${uc.jdbc.validate.sql}"/>
+	</bean>
+	
+	<bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean"> 
+		<!-- 可配置多个持久化单元-->
+        <property name="persistenceXmlLocation" value="classpath:META-INF/persistence.xml"></property> 
+        <property name="persistenceUnitName" value="symphony"></property> 
+        <property name="dataSource" ref="dataSource" />
+        <property name="jpaVendorAdapter">  
+            <bean class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">  
+                <property name="showSql" value="${main.jpa.showsql}"></property>  
+                <property name="database" value="${main.jpa.dbtype}"></property>  
+            </bean>  
+        </property>  
+    </bean>
+    
+    <bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">  
+        <property name="entityManagerFactory" ref="entityManagerFactory" />  
+    </bean>
+     
+    <tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="false"/>
+    
+	<jpa:repositories base-package="com.iclick.symphony.iapps.repository"
+		base-class="com.iclick.symphony.iapps.repository.SimpleBaseRepository"
+		entity-manager-factory-ref="entityManagerFactory"
+		transaction-manager-ref="transactionManager">
+	</jpa:repositories>
+	
+	<!-- 开发环境配置文件 -->  
+	<beans profile="dev">
+		<util:properties id="configProperties" location="classpath:config-dev.properties"/>
+	</beans>
+	
+	<!-- 开发环境配置文件 -->  
+	<beans profile="test">
+	    <util:properties id="configProperties" location="classpath:config-test.properties"/>  
+	</beans>  
+	   
+	<!-- 生产环境配置文件 -->  
+	<beans profile="prod">
+	    <util:properties id="configProperties" location="classpath:config-prod.properties"/>  
+	</beans>
+</beans>

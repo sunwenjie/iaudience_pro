@@ -1,0 +1,288 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:jpa="http://www.springframework.org/schema/data/jpa"
+       xmlns:util="http://www.springframework.org/schema/util"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans
+               http://www.springframework.org/schema/beans/spring-beans-4.3.xsd
+               http://www.springframework.org/schema/context
+               http://www.springframework.org/schema/context/spring-context-4.3.xsd
+               http://www.springframework.org/schema/tx
+               http://www.springframework.org/schema/tx/spring-tx-4.3.xsd
+               http://www.springframework.org/schema/aop
+               http://www.springframework.org/schema/aop/spring-aop-4.3.xsd
+               http://www.springframework.org/schema/util  
+               http://www.springframework.org/schema/util/spring-util-4.3.xsd
+               http://www.springframework.org/schema/data/jpa
+               http://www.springframework.org/schema/data/jpa/spring-jpa-1.8.xsd
+               http://www.springframework.org/schema/task
+               http://www.springframework.org/schema/task/spring-task.xsd
+               ">
+	<context:annotation-config/>
+    <context:component-scan base-package="com.iclick.symphony.iaudience" />
+    
+    <context:property-placeholder properties-ref="configProperties"/>
+
+    <!-- 支持异步方法执行 -->
+    <!-- 缺省的异步任务线程池 -->
+    <task:annotation-driven executor="asyncExecutor" />
+    <task:executor id="asyncExecutor" pool-size="100-10000" queue-capacity="10" />
+
+    <bean class="org.springframework.aop.framework.autoproxy.DefaultAdvisorAutoProxyCreator" >
+        <property name="proxyTargetClass" value="true" />
+    </bean>
+
+	<bean id="dataSource" class="com.zaxxer.hikari.HikariDataSource">
+ 		<property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+		<property name="jdbcUrl" value="${jdbc.url}"/>
+		<property name="username" value="${jdbc.user}"/>
+		<property name="password" value="${jdbc.password}"/>
+		<!-- Default settings -->
+		<!-- 控制自动提交行为 default：true -->
+		<property name="autoCommit" value="true"/>
+		<!--连接池获取的连接是否只读 default:false-->
+		<property name="readOnly" value="false"/>
+		<!--最大连接超时时间 default：30秒-->
+		<property name="connectionTimeout" value="30000"/>
+		<!--最大空闲超时时间 default：10分钟   -->
+		<property name="idleTimeout" value="600000"/>
+
+		<!--连接池中一个连接的最大生命周期 default：30分钟-->
+		<property name="maxLifetime" value="1800000 "/>
+		<!--..还有一些其他配置属性 有兴趣可以看看 O(∩_∩)O哈哈~ -->
+		<property name="connectionTestQuery" value="${jdbc.validate.sql}"/>
+	</bean>
+	
+	<bean id="entityManagerFactory" class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean"> 
+		<!-- 可配置多个持久化单元-->
+        <property name="persistenceXmlLocation" value="classpath:META-INF/persistence.xml"></property> 
+        <property name="persistenceUnitName" value="iaudience"></property> 
+        <property name="dataSource" ref="dataSource" />
+        <property name="jpaVendorAdapter">  
+            <bean class="org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter">  
+                <property name="showSql" value="${jpa.showsql}"></property>  
+                <property name="database" value="${jpa.dbtype}"></property>  
+            </bean>  
+        </property> <!-- 
+         <property name="jpaProperties">  
+            <props>  
+                <prop key="hibernate.dialect">${hibernate.dialect}</prop>  
+                <prop key="hibernate.show_sql">${hibernate.show_sql}</prop>  
+                <prop key="hibernate.format_sql">${hibernate.format_sql}</prop>  
+                <prop key="hibernate.hbm2ddl.auto">${hibernate.hbm2ddl.auto}</prop>  
+                <prop key="hibernate.ejb.naming_strategy">org.hibernate.cfg.ImprovedNamingStrategy</prop>  
+            </props>  
+        </property>    -->
+    </bean>
+    
+    <bean id="transactionManager" class="org.springframework.orm.jpa.JpaTransactionManager">  
+        <property name="entityManagerFactory" ref="entityManagerFactory" />  
+    </bean>
+     
+    <tx:annotation-driven transaction-manager="transactionManager" proxy-target-class="false"/>
+    
+	<jpa:repositories base-package="com.iclick.symphony.iaudience.dao"
+		entity-manager-factory-ref="entityManagerFactory"
+		transaction-manager-ref="transactionManager">
+	</jpa:repositories>
+	
+	<!-- 
+	<bean id="appConfig" class="com.iclick.infrastructure.example.config.AppConfig">
+		<property name="configProperties" ref="configProperties"/>
+	</bean>
+	-->
+	
+	<bean id="pollingConnectionManager" class="org.apache.http.impl.conn.PoolingHttpClientConnectionManager">
+        <!--整个连接池的并发-->
+        <property name="maxTotal" value="1000" />
+        <!--每个主机的并发-->
+        <property name="defaultMaxPerRoute" value="1000" />
+    </bean>
+    
+    <bean id="ioreactor" class="org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor">
+    </bean>
+    
+    <bean id="pollingNHttpConnectionManager" class="org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager">
+    	<constructor-arg ref="ioreactor"/>
+        <!--整个连接池的并发-->
+        <property name="maxTotal" value="1000" />
+        <!--每个主机的并发-->
+        <property name="defaultMaxPerRoute" value="1000" />
+    </bean>
+    
+
+    <bean id="httpClientBuilder" class="org.apache.http.impl.client.HttpClientBuilder" factory-method="create">
+        <property name="connectionManager" ref="pollingConnectionManager" />
+        <!--开启重试-->
+        <property name="retryHandler">
+            <bean class="org.apache.http.impl.client.DefaultHttpRequestRetryHandler">
+                <constructor-arg value="2"/>
+                <constructor-arg value="true"/>
+            </bean>
+        </property>
+        <property name="defaultHeaders">
+            <list>
+                <bean class="org.apache.http.message.BasicHeader">
+                    <constructor-arg value="User-Agent"/>
+                    <constructor-arg value="Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.16 Safari/537.36"/>
+                </bean>
+                <bean class="org.apache.http.message.BasicHeader">
+                    <constructor-arg value="Accept-Encoding"/>
+                    <constructor-arg value="gzip,deflate"/>
+                </bean>
+                <bean class="org.apache.http.message.BasicHeader">
+                    <constructor-arg value="Accept-Language"/>
+                    <constructor-arg value="zh-CN"/>
+                </bean>
+            </list>
+        </property>
+    </bean>
+ <!--    <bean id="responseContentEncoding" factory-bean="org.apache.http.client.protocol.ResponseContentEncoding" /> -->
+    
+    
+    <bean id="httpAsyncClientBuilder" class="org.apache.http.impl.nio.client.HttpAsyncClientBuilder" factory-method="create">
+        <property name="connectionManager" ref="pollingNHttpConnectionManager" />
+        <!--开启重试-->
+       <!--  HttpAsyncClientBuilder addInterceptorLast(final HttpResponseInterceptor itcp) -->
+        <property name="defaultHeaders">
+            <list>
+                <bean class="org.apache.http.message.BasicHeader">
+                    <constructor-arg value="User-Agent"/>
+                    <constructor-arg value="Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/31.0.1650.16 Safari/537.36"/>
+                </bean>
+                <bean class="org.apache.http.message.BasicHeader">
+                    <constructor-arg value="Accept-Encoding"/>
+                    <constructor-arg value="gzip,deflate"/>
+                </bean>
+                <bean class="org.apache.http.message.BasicHeader">
+                    <constructor-arg value="Accept-Language"/>
+                    <constructor-arg value="zh-CN"/>
+                </bean>
+            </list>
+        </property>
+    </bean>
+
+    <bean id="httpClient" factory-bean="httpClientBuilder" factory-method="build" />
+    <bean id="httpAsyncClient" factory-bean="httpAsyncClientBuilder" factory-method="build" />
+    
+    <bean id="clientHttpRequestFactory" class="org.springframework.http.client.HttpComponentsClientHttpRequestFactory">
+        <constructor-arg ref="httpClient"/>
+        <!--连接超时时间，毫秒-->
+        <property name="connectTimeout" value="5000"/>
+        <!--读写超时时间，毫秒-->
+        <property name="readTimeout" value="120000"/>
+    </bean>
+    
+    <bean id="asyncClientHttpRequestFactory" class="org.springframework.http.client.HttpComponentsAsyncClientHttpRequestFactory">
+        <constructor-arg ref="httpAsyncClient"/>
+        <!--连接超时时间，毫秒-->
+        <property name="connectTimeout" value="5000"/>
+        <!--读写超时时间，毫秒-->
+        <property name="readTimeout" value="120000"/>
+    </bean>
+    
+    
+	
+	<bean id="asyncRestTemplate" class="org.springframework.web.client.AsyncRestTemplate">
+        <constructor-arg ref="asyncClientHttpRequestFactory"/>
+        <property name="errorHandler">
+            <bean class="org.springframework.web.client.DefaultResponseErrorHandler"/>
+        </property>
+        <property name="messageConverters">
+            <list>
+<!--                 <bean class="org.springframework.http.converter.FormHttpMessageConverter"/>
+                <bean class="org.springframework.http.converter.xml.MappingJackson2XmlHttpMessageConverter"/>
+                <bean class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter"/>
+                <bean class="org.springframework.http.converter.StringHttpMessageConverter">
+                    <property name="supportedMediaTypes">
+                        <list>
+                            <value>application/json;charset=UTF-8</value>
+                            <value>text/plain;charset=UTF-8</value>
+                        </list>
+                    </property>
+                </bean> -->
+
+                
+             	<bean id="byteArrayHttpMessageConverter" class="org.springframework.http.converter.ByteArrayHttpMessageConverter"></bean>
+     			<bean id="stringHttpMessageConverter" class="org.springframework.http.converter.StringHttpMessageConverter">
+     				<constructor-arg value="UTF-8"></constructor-arg>
+     				<property name="supportedMediaTypes">
+                        <list>
+                            <value>text/plain;charset=UTF-8</value>
+                        </list>
+                    </property>
+     			</bean>
+     			<bean id="resourceHttpMessageConverter" class="org.springframework.http.converter.ResourceHttpMessageConverter"></bean>
+     			<bean id="sourceHttpMessageConverter" class="org.springframework.http.converter.xml.SourceHttpMessageConverter"></bean>
+     			<bean id="allEncompassingFormHttpMessageConverter" class="org.springframework.http.converter.support.AllEncompassingFormHttpMessageConverter"></bean>
+     			<bean id="jaxb2RootElementHttpMessageConverter" class="org.springframework.http.converter.xml.Jaxb2RootElementHttpMessageConverter"></bean>
+     			<bean id="mappingJackson2HttpMessageConverter" class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter"></bean>
+            </list>
+        </property>
+    </bean>
+    
+    <bean id="restTemplate" class="org.springframework.web.client.RestTemplate">
+        <constructor-arg ref="clientHttpRequestFactory"/>
+        <property name="errorHandler">
+            <bean class="org.springframework.web.client.DefaultResponseErrorHandler"/>
+        </property>
+        <property name="messageConverters">
+            <list>
+                <bean id="byteArrayHttpMessageConverter" class="org.springframework.http.converter.ByteArrayHttpMessageConverter"></bean>
+     			<bean id="stringHttpMessageConverter" class="org.springframework.http.converter.StringHttpMessageConverter">
+     				<constructor-arg value="UTF-8"></constructor-arg>
+     				<property name="supportedMediaTypes">
+                        <list>
+                            <value>text/plain;charset=UTF-8</value>
+                        </list>
+                    </property>
+     			</bean>
+     			<bean id="resourceHttpMessageConverter" class="org.springframework.http.converter.ResourceHttpMessageConverter"></bean>
+     			<bean id="sourceHttpMessageConverter" class="org.springframework.http.converter.xml.SourceHttpMessageConverter"></bean>
+     			<bean id="allEncompassingFormHttpMessageConverter" class="org.springframework.http.converter.support.AllEncompassingFormHttpMessageConverter"></bean>
+     			<bean id="jaxb2RootElementHttpMessageConverter" class="org.springframework.http.converter.xml.Jaxb2RootElementHttpMessageConverter"></bean>
+     			<bean id="mappingJackson2HttpMessageConverter" class="org.springframework.http.converter.json.MappingJackson2HttpMessageConverter"></bean>
+            </list>
+        </property>
+    </bean>
+    
+    <bean id="ucDataSource" class="com.zaxxer.hikari.HikariDataSource">
+ 		<property name="driverClassName" value="com.mysql.jdbc.Driver"/>
+		<property name="jdbcUrl" value="${uc.jdbc.url}"/>
+		<property name="username" value="${uc.jdbc.user}"/>
+		<property name="password" value="${uc.jdbc.password}"/>
+		<!-- Default settings -->
+		<!-- 控制自动提交行为 default：true -->
+		<property name="autoCommit" value="true"/>
+		<!--连接池获取的连接是否只读 default:false-->
+		<property name="readOnly" value="false"/>
+		<!--最大连接超时时间 default：30秒-->
+		<property name="connectionTimeout" value="30000"/>
+		<!--最大空闲超时时间 default：10分钟   -->
+		<property name="idleTimeout" value="600000"/>
+		<!--连接池中一个连接的最大生命周期 default：30分钟-->
+		<property name="maxLifetime" value="1800000 "/>
+		<!--..还有一些其他配置属性 有兴趣可以看看 O(∩_∩)O哈哈~ -->
+		<property name="connectionTestQuery" value="${uc.jdbc.validate.sql}"/>
+	</bean>
+	
+    
+	<!-- 开发环境配置文件 -->
+	<beans profile="dev">
+		<util:properties id="configProperties" location="classpath:config.properties,classpath:config-dev.properties"/>
+	</beans>
+
+	<!-- 开发环境配置文件 -->  
+	<beans profile="test">
+	    <util:properties id="configProperties" location="classpath:config-test.properties"/>  
+	</beans>  
+	   
+	<!-- 生产环境配置文件 -->  
+	<beans profile="prod">
+	    <util:properties id="configProperties" location="classpath:config-prod.properties"/>  
+	</beans>
+</beans>

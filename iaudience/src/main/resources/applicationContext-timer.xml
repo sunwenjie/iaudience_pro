@@ -1,0 +1,39 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.0.xsd"
+	default-lazy-init="true">
+
+
+	<description>定时器</description>
+	<beans>
+		<!-- 定时任务 START -->
+		<!-- audienceSummaryTaskObject START -->
+		<bean id="audienceReportDataTaskObject" class="com.iclick.symphony.iaudience.task.AudienceReportDataTask" />
+
+		<bean id="audienceReportDataTaskObjDetail"
+			  class="org.springframework.scheduling.quartz.MethodInvokingJobDetailFactoryBean">
+			<property name="targetObject" ref="audienceReportDataTaskObject" />
+			<property name="targetMethod" value="run" />
+			<property name="concurrent" value="false" /><!-- 设置是否允许并发执行 -->
+		</bean>
+
+		<bean id="audienceReportDataTaskObjectTrigger"
+			  class="org.springframework.scheduling.quartz.CronTriggerFactoryBean">
+			<property name="jobDetail" ref="audienceReportDataTaskObjDetail" />
+			<property name="cronExpression">
+				<!-- 秒，分，时，日期，月份，周几 -->
+				<!-- 每天凌晨1点调用api-->
+				<value>0 0 7 ? * *</value>
+				<!--<value>0 0/15 * ? * *</value>-->
+			</property>
+		</bean>
+		<!-- audienceSummaryTaskObject end -->
+		<bean class="org.springframework.scheduling.quartz.SchedulerFactoryBean">
+			<property name="triggers">
+				<list>
+					<ref bean="audienceReportDataTaskObjectTrigger" />
+				</list>
+			</property>
+		</bean>
+	</beans>
+</beans>

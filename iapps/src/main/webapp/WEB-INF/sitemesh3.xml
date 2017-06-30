@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<sitemesh>
+	<mapping path="/message/list" decorator="/decorators/message-decorator" />
+	<mapping path="/*" decorator="/decorators/main-decorator" />
+	<mapping path="/index.jsp" exclude="true" />
+	<mapping path="/app/guest_list" exclude="true" />
+	<mapping path="/app/detail" exclude="true" />
+</sitemesh>
